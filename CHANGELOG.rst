@@ -4,14 +4,14 @@ xia2 3.8.0 (2022-01-11)
 Features
 --------
 
-- ``xia2.multiplex``: Extend available deltacchalf filtering options to match those in ``dials.scale`` (`#631 <https://github.com/xia2/xia2/issues/631>`_)
-- ``xia2.compare_merging_stats latex=True``: include cc-anom (`#633 <https://github.com/xia2/xia2/issues/633>`_)
+- ``xia2.multiplex``: Extend available deltacchalf filtering options to match those in ``dials.scale``. (`#631 <https://github.com/xia2/xia2/issues/631>`_)
+- ``xia2.compare_merging_stats latex=True``: include cc-anom. (`#633 <https://github.com/xia2/xia2/issues/633>`_)
 
 
 Bugfixes
 --------
 
-- ``xia2.compute_merging_stats``: Avoid warning in output (`#636 <https://github.com/xia2/xia2/issues/636>`_)
+- ``xia2.compute_merging_stats``: Avoid warning in output. (`#636 <https://github.com/xia2/xia2/issues/636>`_)
 - Fix test failure by deprecation of DIALS' OptionParser. (`#642 <https://github.com/xia2/xia2/issues/642>`_)
 
 
