@@ -35,7 +35,7 @@ def generate_scripts(
             # FIXME - update glob of filenames to h5 and test for if all complete
             n_files = len(list(dir.glob("*.h5")))
             if n_files >= 1:
-                print(f"{name} data fully transferred")
+                # print(f"{name} data fully transferred")
                 if Path.is_dir(results_dir / name):
                     if Path.is_file(results_dir / name / "DataFiles" / "merged.mtz"):
                         processing_finished.append(str(name))
@@ -52,12 +52,12 @@ def generate_scripts(
             elif n_files > 0:
                 print(f"{name} data partially transferred")
             else:
-                print(f"{name} no data transferred yet")
+                print(f"No data transferred yet for {name}")
 
     ready = sorted(ready)
-    print(f"Ready for processing: {', '.join(ready)}")
-    print(f"Started processing: {', '.join(processing_started)}")
-    print(f"Finished processing: {', '.join(processing_finished)}")
+    print(f"Ready for processing:\n{', '.join(ready)}")
+    print(f"Started processing:\n{', '.join(processing_started)}")
+    print(f"Finished processing:\n{', '.join(processing_finished)}")
     if processing_failed:
         print(
             f"Processing failed for some jobs: {', '.join(processing_failed)}"
@@ -84,16 +84,14 @@ def generate_scripts(
     # Now generate processing scripts for each data collection
     directory_to_script = {}
     n_generated = 0
+    not_in_conditions = []
     for to_process in ready:
 
         if to_process not in run_to_protein_condition:
-            print(
-                f"Warning: {to_process} not found in definitions in {protein_conditions_file}"
-                + "\nDid you remember to add this to the definitions, or is there a typo?"
-            )
+            not_in_conditions.append(to_process)
             continue
         if not Path.is_dir(results_dir / to_process):
-            print(f"Making directory {results_dir / to_process}")
+            # print(f"Making directory {results_dir / to_process}")
             Path.mkdir(results_dir / to_process)
         image = os.fspath(
             next((name_to_data_dir[to_process] / to_process).glob("*.h5"))
@@ -131,6 +129,14 @@ queue
         if n_generated >= n_jobs_to_generate:
             break
 
+    if not_in_conditions:
+        not_found = ", ".join(f for f in not_in_conditions)
+        print(
+            f"Warning, some image files not found in definitions in {protein_conditions_file}:\n"
+            + f"{not_found}"
+            + "\nDid you remember to add these to the definitions, or is there a typo?"
+        )
+
     # This writes a submit script that can be used to submit %n_jobs_to_generate processing jobs for 'ready' datasets
     # FIXME - update submit.sh for PAL cluster
     if directory_to_script:
@@ -144,9 +150,9 @@ queue
             f.write(submit_sh)
         os.chmod(os.fspath(submit_script_file), stat.S_IRWXU)
         print(
-            f"Written submit script to process the first {n_jobs_to_generate} 'ready for processing' to {submit_script_file}"
+            f"\nWritten submit script to process {n_generated} 'ready for processing' jobs to {submit_script_file}"
         )
-        print(f"To run the script, just run {submit_script_file}")
+        print(f"To run the script, just run {submit_script_file}\n")
 
     # check if submitted same script - perhaps make a separate resubmit_script.sh to redo those with
     # up to date options e.g.
@@ -201,9 +207,9 @@ queue
                     print(f"Writing condor script to {condor_script_file}")
                     f.write(condor_script)
                 os.chmod(os.fspath(condor_script_file), stat.S_IRWXU)
-                print(f"Written merging script for {name} to {condor_script_file}")
+                print(f"\nWritten merging script for {name} to {condor_script_file}")
                 print(
-                    "Please run the script yourself to merge the data for this protein and condition"
+                    "Please run the script yourself in the directory to merge the data for this protein and condition\n"
                 )
 
 
