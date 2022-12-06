@@ -204,7 +204,6 @@ queue
                 condor_script_name = "condor_submit.sh"
                 condor_script_file = results_dir / merge_dir_name / condor_script_name
                 with open(condor_script_file, "w") as f:
-                    print(f"Writing condor script to {condor_script_file}")
                     f.write(condor_script)
                 os.chmod(os.fspath(condor_script_file), stat.S_IRWXU)
                 print(f"\nWritten merging script for {name} to {condor_script_file}")
