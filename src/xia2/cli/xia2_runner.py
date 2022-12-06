@@ -97,7 +97,9 @@ def generate_scripts(
             next((name_to_data_dir[to_process] / to_process).glob("*.h5"))
         )
         prot, cond = run_to_protein_condition[to_process]
-        script_options = " ".join(o for o in options[prot][cond])
+        if cond not in options[prot]:
+            options[prot][cond] = options[prot]["default"]
+        script_options = " ".join(f"{k}={v}" for k, v in options[prot][cond].items())
         # Now write the script
         script = f"""#!/bin/bash
 source {dials_source}
@@ -172,10 +174,10 @@ queue
                 # need to get the right reference
                 prot, cond = name.split("_")
                 reference = None
-                for val in options[prot][cond]:
-                    if "reference=" in val or "model=" in val:
-                        reference = val
-                        break
+                if "reference" in options[prot][cond]:
+                    reference = options[prot][cond]["reference"]
+                elif "model" in options[prot][cond]:
+                    reference = options[prot][cond]["model"]
                 if not reference:
                     print(
                         f"Can't find reference pdb model in {protein_options_file} for {name}"
@@ -282,6 +284,12 @@ def run():
         help="Inspect raw data files, make processing directories \nand generate scripts for $njobs jobs.",
     )
     parser.add_argument(
+        "--set-reference-geometry",
+        metavar=("reference-geometry"),
+        help="Path to reference geometry file. Will update the xia2.options file and be\nused in future jobs",
+        type=str,
+    )
+    parser.add_argument(
         "--remove-condition",
         type=str,
         nargs=2,
@@ -375,6 +383,15 @@ def run():
                 row = [f"{prot}", f"{condition}", names]
                 rows.append(row)
         print(tabulate(rows, headers))
+
+    if args.set_reference_geometry:
+        with open(protein_options_file, "r") as f:
+            options = json.load(f)
+        for prot, v in options.items():
+            for cond, vals in v.items():
+                vals["reference_geometry"] = args.set_reference_geometry
+        with open(protein_options_file, "w") as f:
+            json.dump(options, f)
 
     if args.remove_condition:
         with open(protein_conditions_file, "r") as f:
