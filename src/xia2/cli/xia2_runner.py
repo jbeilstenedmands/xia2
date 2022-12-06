@@ -83,20 +83,21 @@ def generate_scripts(
 
     # Now generate processing scripts for each data collection
     directory_to_script = {}
-    for to_process in ready[:n_jobs_to_generate]:
-        if not Path.is_dir(results_dir / to_process):
-            print(f"Making directory {results_dir / to_process}")
-            Path.mkdir(results_dir / to_process)
+    n_generated = 0
+    for to_process in ready:
 
-        image = os.fspath(
-            next((name_to_data_dir[to_process] / to_process).glob("*.h5"))
-        )
         if to_process not in run_to_protein_condition:
             print(
                 f"Warning: {to_process} not found in definitions in {protein_conditions_file}"
                 + "\nDid you remember to add this to the definitions, or is there a typo?"
             )
             continue
+        if not Path.is_dir(results_dir / to_process):
+            print(f"Making directory {results_dir / to_process}")
+            Path.mkdir(results_dir / to_process)
+        image = os.fspath(
+            next((name_to_data_dir[to_process] / to_process).glob("*.h5"))
+        )
         prot, cond = run_to_protein_condition[to_process]
         script_options = " ".join(o for o in options[prot][cond])
         # Now write the script
@@ -110,8 +111,7 @@ xia2.ssx image={image} {script_options}
             print(f"Writing xia2 script to {script_file}")
             f.write(script)
         os.chmod(os.fspath(script_file), stat.S_IRWXU)
-        condor_script = """
-request_cpus = 20
+        condor_script = """request_cpus = 20
 request_memory = 20000M
 executable = run_xia2.sh
 log = process.log
@@ -127,6 +127,9 @@ queue
             f.write(condor_script)
         os.chmod(os.fspath(condor_script_file), stat.S_IRWXU)
         directory_to_script[results_dir / to_process] = condor_script_name
+        n_generated += 1
+        if n_generated >= n_jobs_to_generate:
+            break
 
     # This writes a submit script that can be used to submit %n_jobs_to_generate processing jobs for 'ready' datasets
     # FIXME - update submit.sh for PAL cluster
@@ -185,8 +188,7 @@ xia2.ssx_reduce {reference}"""
                     f.write(submit_sh)
                 os.chmod(os.fspath(submit_script_name), stat.S_IRWXU)
 
-                condor_script = """
-request_cpus = 20
+                condor_script = """request_cpus = 20
 request_memory = 20000M
 executable = merge_all.sh
 log = process.log
@@ -240,12 +242,13 @@ def run():
     # These options define where files are
     # FIXME - Update data and results directories
     # protein_conditions_file = Path.cwd() / "conditions.json"
-    data_dirs = []
-    results_dir = ""
-    dials_source = ""
-    config_folder = Path.cwd()
-    protein_options_file = config_folder / "xia2_options.json"
-    protein_conditions_file = config_folder / "conditions.json"
+    with open("runner.cfg", "r") as f:
+        config = json.load(f)
+    data_dirs = [Path(i) for i in config["data_dirs"]]
+    results_dir = Path(config["results_dir"])
+    dials_source = config["dials_source"]
+    protein_options_file = results_dir / "xia2_options.json"
+    protein_conditions_file = results_dir / "conditions.json"
 
     parser = argparse.ArgumentParser(
         description="Add new runs to options files, generate runner scripts"
@@ -271,8 +274,9 @@ def run():
         "--generate-scripts",
         metavar=("njobs"),
         nargs="?",
+        type=int,
         const=5,
-        default=None,
+        default=0,
         help="Inspect raw data files, make processing directories \nand generate scripts for $njobs jobs.",
     )
     parser.add_argument(

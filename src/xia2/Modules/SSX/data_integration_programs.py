@@ -499,14 +499,14 @@ def ssx_integrate(
                         iotbx.phil.parse(xia2_phil),
                     ]
                 )
-            diff_phil = integration_phil.fetch_diff(source=working_phil)
+            # diff_phil = integration_phil.fetch_diff(source=working_phil)
             params = working_phil.extract()
-            dials_logger.info(
-                "The following parameters have been modified:\n"
-                + "input.experiments = indexed.expt\n"
-                + "input.reflections = indexed.refl\n"
-                + f"{diff_phil.as_str()}"
-            )
+            # dials_logger.info(
+            #    "The following parameters have been modified:\n"
+            #    + "input.experiments = indexed.expt\n"
+            #    + "input.reflections = indexed.refl\n"
+            #    + f"{diff_phil.as_str()}"
+            # )
             # Run the integration
             # Record the datafiles so that the information can be passed
             # out in the case of processing on multiple nodes, as adding to
