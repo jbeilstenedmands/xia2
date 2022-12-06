@@ -136,7 +136,7 @@ queue
     if directory_to_script:
         submit_sh = ""
         for dir, script in directory_to_script.items():
-            submit_sh += "\n" + f"""cd {dir}\ncondor_submit {script}"""
+            submit_sh += f"""cd {dir}\ncondor_submit {script}"""
         submit_sh += "\n"
         submit_script_name = "submit.sh"
         submit_script_file = results_dir / submit_script_name
@@ -179,9 +179,7 @@ queue
 source {dials_source}
 xia2.ssx_reduce {reference}"""
                 for dataset in merge_group:
-                    submit_sh += (
-                        f" processed_directory={results_dir / dataset / 'DataFiles'}"
-                    )
+                    submit_sh += f" {results_dir / dataset / 'batch_*' / 'integrated*'}"
                 submit_sh += "\n"
                 submit_script_name = results_dir / merge_dir_name / "merge_all.sh"
                 with open(submit_script_name, "w") as f:
@@ -239,11 +237,10 @@ def _parse_image_range(name_string: str):
 
 def run():
 
+    from xia2.cli.runner_options import options as config
+
     # These options define where files are
     # FIXME - Update data and results directories
-    # protein_conditions_file = Path.cwd() / "conditions.json"
-    with open("runner.cfg", "r") as f:
-        config = json.load(f)
     data_dirs = [Path(i) for i in config["data_dirs"]]
     results_dir = Path(config["results_dir"])
     dials_source = config["dials_source"]
