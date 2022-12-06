@@ -188,7 +188,9 @@ source {dials_source}
 xia2.ssx_reduce {reference}"""
                 for dataset in merge_group:
                     submit_sh += f" {results_dir / dataset / 'batch_*' / 'integrated*'}"
-                submit_sh += "\n"
+                submit_sh += (
+                    " absolute_length_tolerance=3.0 absolute_angle_tolerance=5.0\n"
+                )
                 submit_script_name = results_dir / merge_dir_name / "merge_all.sh"
                 with open(submit_script_name, "w") as f:
                     f.write(submit_sh)
