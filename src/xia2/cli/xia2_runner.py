@@ -220,6 +220,66 @@ queue
                 )
 
 
+def summary_of_main_stats(log):
+    n_integrated = None
+    median_cell = None
+    estimated_resolution = None
+    rsplit_vals = None
+    cc_vals = None
+    mtz_file = None
+    with open(log, "r") as f:
+        for line in f.readlines():
+            if "new integrated crystals" in line:
+                n_integrated = line.split()[1]
+            elif line.startswith("Median cell: "):
+                median_cell = line.lstrip("Median cell: ").rstrip("\n")
+            elif line.startswith("Approximate resolution limit suggested"):
+                estimated_resolution = line.split()[-1].rstrip("\n")
+            elif line.startswith("Merged mtz file: "):
+                mtz_file = line.lstrip("Merged mtz file: ").rstrip("\n")
+            elif line.startswith("Rsplit"):
+                rsplit_vals = [
+                    100.0 * float(i) if i is not None else 0.0 for i in line.split()[1:]
+                ]
+            elif line.startswith("CC half"):
+                cc_vals = [float(i) if i is not None else 0.0 for i in line.split()[2:]]
+
+    if n_integrated:
+        print(f"Crystals integrated: {n_integrated}")
+    if median_cell:
+        print(f"Median cell: {median_cell}")
+
+    if estimated_resolution:
+        print(f"Estimated resolution from cc half fit: {estimated_resolution}")
+    else:
+        print(
+            "Unable to estimate resolution from cc half fit, reporting overall values"
+        )
+
+    if len(rsplit_vals) == 4:
+        print(
+            "Rsplit suggested (%) total (inner - outer): "
+            + f"{rsplit_vals[0]:.2f} ({rsplit_vals[1]:.2f} - {rsplit_vals[2]:.2f})"
+        )
+    elif len(rsplit_vals) == 3:
+        print(
+            "Rsplit overall (%) total (inner - outer): "
+            + f"{rsplit_vals[0]:.2f} ({rsplit_vals[1]:.2f} - {rsplit_vals[2]:.2f})"
+        )
+    if len(cc_vals) == 4:
+        print(
+            "CChalf suggested (%) total (inner - outer):  "
+            + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
+        )
+    elif len(cc_vals) == 3:
+        print(
+            "CChalf overall (%) total (inner - outer):  "
+            + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
+        )
+    if mtz_file:
+        print(f"MTZ file: {mtz_file}")
+
+
 def _parse_image_range(name_string: str):
     print(f"interpreting image-name {name_string} as a range separated by ':'")
     try:
@@ -294,6 +354,11 @@ def run():
         metavar=("reference-geometry"),
         help="Path to reference geometry file. Will update the xia2.options file and be\nused in future jobs",
         type=str,
+    )
+    parser.add_argument(
+        "--report-stats",
+        action="store_true",
+        help="Print a summary of favourite metrics for each protein & condition",
     )
     parser.add_argument(
         "--remove-condition",
@@ -439,6 +504,21 @@ def run():
             n_jobs_to_generate=args.generate_scripts,
             dials_source=dials_source,
         )
+
+    if args.report_stats:
+        with open(protein_conditions_file, "r") as f:
+            conditions_dict = json.load(f)
+        for prot, v in conditions_dict.items():
+            for cond in v.keys():
+                if (
+                    results_dir / f"merge_{prot}_{cond}" / "xia2.ssx_reduce.log"
+                ).is_file():
+                    print(
+                        f"Summary processing stats for protein={prot}, condition={cond}:"
+                    )
+                    summary_of_main_stats(
+                        results_dir / f"merge_{prot}_{cond}" / "xia2.ssx_reduce.log"
+                    )
 
 
 if __name__ == "__main__":
