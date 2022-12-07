@@ -145,8 +145,7 @@ queue
     if directory_to_script:
         submit_sh = ""
         for dir, script in directory_to_script.items():
-            submit_sh += f"""cd {dir}\ncondor_submit {script}"""
-        submit_sh += "\n"
+            submit_sh += f"""cd {dir}\ncondor_submit {script}\n"""
         submit_script_name = "submit.sh"
         submit_script_file = results_dir / submit_script_name
         with open(submit_script_file, "w") as f:
