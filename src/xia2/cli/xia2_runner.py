@@ -174,6 +174,8 @@ queue
                 # need to get the right reference
                 prot, cond = name.split("_")
                 reference = None
+                if cond not in options[prot]:
+                    options[prot][cond] = options[prot]["default"]
                 if "reference" in options[prot][cond]:
                     reference = options[prot][cond]["reference"]
                 elif "model" in options[prot][cond]:
