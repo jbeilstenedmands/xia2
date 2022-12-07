@@ -114,6 +114,7 @@ xia2.ssx image={image} {script_options}
         condor_script = """request_cpus = 20
 request_memory = 20000M
 executable = run_xia2.sh
+Requirements = (Machine != "pal-wn1004.sdfarm.kr")
 log = process.log
 error   = logs.err
 output  = logs.out
@@ -199,6 +200,7 @@ xia2.ssx_reduce {reference}"""
                 condor_script = """request_cpus = 20
 request_memory = 20000M
 executable = merge_all.sh
+Requirements = (Machine != "pal-wn1004.sdfarm.kr")
 log = process.log
 error   = logs.err
 output  = logs.out
