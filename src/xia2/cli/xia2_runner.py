@@ -187,7 +187,7 @@ queue
                     continue
                 submit_sh = f"""#!/bin/bash
 source {dials_source}
-xia2.ssx_reduce {reference}"""
+xia2.ssx_reduce reference={reference}"""
                 for dataset in merge_group:
                     submit_sh += f" {results_dir / dataset / 'batch_*' / 'integrated*'}"
                 submit_sh += (
