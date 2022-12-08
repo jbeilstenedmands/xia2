@@ -162,8 +162,13 @@ queue
     # This next section generates scripts to merge multiple integrated runs from a given protein/condition.
     prot_condition_to_processed = defaultdict(list)
     for dir in processing_finished:
-        prot, cond = run_to_protein_condition[dir]
-        prot_condition_to_processed[prot + "_" + cond].append(dir)
+        if dir not in run_to_protein_condition:
+            print(
+                f"Warning: {dir} has finished processing, but no matching definition found in the runner. Won't be added to merge script."
+            )
+        else:
+            prot, cond = run_to_protein_condition[dir]
+            prot_condition_to_processed[prot + "_" + cond].append(dir)
     if prot_condition_to_processed:
         for name, merge_group in prot_condition_to_processed.items():
             if len(merge_group) > 1:
