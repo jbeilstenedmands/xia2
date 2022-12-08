@@ -449,7 +449,7 @@ def run():
             for condition, namelist in v.items():
                 names = ""
                 length = 0
-                for name in namelist:
+                for name in sorted(namelist):
                     if length > 50:
                         names += f"\n{name}, "
                         length = len(name)
