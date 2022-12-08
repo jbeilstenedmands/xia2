@@ -361,6 +361,12 @@ def run():
         type=str,
     )
     parser.add_argument(
+        "--set-mask",
+        metavar=("mask file"),
+        help="Path to mask file. Will update the xia2.options file and be\nused in future jobs",
+        type=str,
+    )
+    parser.add_argument(
         "--report-stats",
         action="store_true",
         help="Print a summary of favourite metrics for each protein & condition",
@@ -466,6 +472,15 @@ def run():
         for prot, v in options.items():
             for cond, vals in v.items():
                 vals["reference_geometry"] = args.set_reference_geometry
+        with open(protein_options_file, "w") as f:
+            json.dump(options, f)
+
+    if args.set_mask:
+        with open(protein_options_file, "r") as f:
+            options = json.load(f)
+        for prot, v in options.items():
+            for cond, vals in v.items():
+                vals["mask"] = args.set_mask
         with open(protein_options_file, "w") as f:
             json.dump(options, f)
 
