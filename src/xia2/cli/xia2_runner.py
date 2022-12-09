@@ -356,8 +356,9 @@ def run():
     )
     parser.add_argument(
         "--set-reference-geometry",
-        metavar=("reference-geometry"),
-        help="Path to reference geometry file. Will update the xia2.options file and be\nused in future jobs",
+        nargs=2,
+        metavar=("reference-geometry", "protein"),
+        help="Path to reference geometry file and protein this should be used for. Will update the xia2.options file and be\nused in future jobs",
         type=str,
     )
     parser.add_argument(
@@ -469,10 +470,13 @@ def run():
     if args.set_reference_geometry:
         with open(protein_options_file, "r") as f:
             options = json.load(f)
+        geom_file, protein = args.set_reference_geometry
+        geom_file = os.fspath(Path(geom_file).resolve())
         for prot, v in options.items():
-            for cond, vals in v.items():
-                if cond != "merging":
-                    vals["reference_geometry"] = args.set_reference_geometry
+            if prot == protein:
+                for cond, vals in v.items():
+                    if cond != "merging":
+                        vals["reference_geometry"] = geom_file
         with open(protein_options_file, "w") as f:
             json.dump(options, f, indent=2)
 
