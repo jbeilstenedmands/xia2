@@ -473,7 +473,7 @@ def run():
             for cond, vals in v.items():
                 vals["reference_geometry"] = args.set_reference_geometry
         with open(protein_options_file, "w") as f:
-            json.dump(options, f)
+            json.dump(options, f, indent=2)
 
     if args.set_mask:
         with open(protein_options_file, "r") as f:
@@ -482,7 +482,7 @@ def run():
             for cond, vals in v.items():
                 vals["mask"] = args.set_mask
         with open(protein_options_file, "w") as f:
-            json.dump(options, f)
+            json.dump(options, f, indent=2)
 
     if args.remove_condition:
         with open(protein_conditions_file, "r") as f:
