@@ -471,7 +471,8 @@ def run():
             options = json.load(f)
         for prot, v in options.items():
             for cond, vals in v.items():
-                vals["reference_geometry"] = args.set_reference_geometry
+                if cond != "merging":
+                    vals["reference_geometry"] = args.set_reference_geometry
         with open(protein_options_file, "w") as f:
             json.dump(options, f, indent=2)
 
@@ -480,7 +481,8 @@ def run():
             options = json.load(f)
         for prot, v in options.items():
             for cond, vals in v.items():
-                vals["mask"] = args.set_mask
+                if cond != "merging":
+                    vals["mask"] = args.set_mask
         with open(protein_options_file, "w") as f:
             json.dump(options, f, indent=2)
 
