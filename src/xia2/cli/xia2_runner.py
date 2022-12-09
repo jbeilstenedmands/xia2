@@ -260,27 +260,28 @@ def summary_of_main_stats(log):
         print(
             "Unable to estimate resolution from cc half fit, reporting overall values"
         )
-
-    if len(rsplit_vals) == 4:
-        print(
-            "Rsplit suggested (%) total (inner - outer): "
-            + f"{rsplit_vals[0]:.2f} ({rsplit_vals[1]:.2f} - {rsplit_vals[2]:.2f})"
-        )
-    elif len(rsplit_vals) == 3:
-        print(
-            "Rsplit overall (%) total (inner - outer): "
-            + f"{rsplit_vals[0]:.2f} ({rsplit_vals[1]:.2f} - {rsplit_vals[2]:.2f})"
-        )
-    if len(cc_vals) == 4:
-        print(
-            "CChalf suggested (%) total (inner - outer):  "
-            + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
-        )
-    elif len(cc_vals) == 3:
-        print(
-            "CChalf overall (%) total (inner - outer):  "
-            + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
-        )
+    if rsplit_vals:
+        if len(rsplit_vals) == 4:
+            print(
+                "Rsplit suggested (%) total (inner - outer): "
+                + f"{rsplit_vals[0]:.2f} ({rsplit_vals[1]:.2f} - {rsplit_vals[2]:.2f})"
+            )
+        elif len(rsplit_vals) == 3:
+            print(
+                "Rsplit overall (%) total (inner - outer): "
+                + f"{rsplit_vals[0]:.2f} ({rsplit_vals[1]:.2f} - {rsplit_vals[2]:.2f})"
+            )
+    if cc_vals:
+        if len(cc_vals) == 4:
+            print(
+                "CChalf suggested (%) total (inner - outer):  "
+                + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
+            )
+        elif len(cc_vals) == 3:
+            print(
+                "CChalf overall (%) total (inner - outer):  "
+                + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
+            )
     if mtz_file:
         print(f"MTZ file: {mtz_file}")
 
@@ -540,7 +541,7 @@ def run():
                     results_dir / f"merge_{prot}_{cond}" / "xia2.ssx_reduce.log"
                 ).is_file():
                     print(
-                        f"Summary processing stats for protein={prot}, condition={cond}:"
+                        f"\nSummary processing stats for protein={prot}, condition={cond}:"
                     )
                     summary_of_main_stats(
                         results_dir / f"merge_{prot}_{cond}" / "xia2.ssx_reduce.log"
