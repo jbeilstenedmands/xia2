@@ -56,11 +56,11 @@ def generate_scripts(
 
     ready = sorted(ready)
     print(f"Ready for processing:\n{', '.join(ready)}")
-    print(f"Started processing:\n{', '.join(processing_started)}")
-    print(f"Finished processing:\n{', '.join(processing_finished)}")
+    print(f"Started processing:\n{', '.join(sorted(processing_started))}")
+    print(f"Finished processing:\n{', '.join(sorted(processing_finished))}")
     if processing_failed:
         print(
-            f"Processing failed for some jobs: {', '.join(processing_failed)}"
+            f"Processing failed for some jobs: {', '.join(sorted(processing_failed))}"
             + f"\nPlease check results in {results_dir} for cause of failure, and"
             + f"\nthe options specified in {protein_options_file}"
             + "\nThen fix input options, delete the relevant processing directory for that job and try again"
