@@ -232,6 +232,9 @@ def summary_of_main_stats(log):
     rsplit_vals = None
     cc_vals = None
     mtz_file = None
+    multiplicity_vals = None
+    completeness_vals = None
+    isigma_vals = None
     with open(log, "r") as f:
         for line in f.readlines():
             if "new integrated crystals" in line:
@@ -245,6 +248,18 @@ def summary_of_main_stats(log):
             elif line.startswith("Rsplit"):
                 rsplit_vals = [
                     100.0 * float(i) if i is not None else 0.0 for i in line.split()[1:]
+                ]
+            elif line.startswith("Multiplicity"):
+                multiplicity_vals = [
+                    float(i) if i is not None else 0.0 for i in line.split()[1:]
+                ]
+            elif line.startswith("I/sigma"):
+                isigma_vals = [
+                    float(i) if i is not None else 0.0 for i in line.split()[1:]
+                ]
+            elif line.startswith("Completeness"):
+                completeness_vals = [
+                    float(i) if i is not None else 0.0 for i in line.split()[1:]
                 ]
             elif line.startswith("CC half"):
                 cc_vals = [float(i) if i is not None else 0.0 for i in line.split()[2:]]
@@ -260,6 +275,39 @@ def summary_of_main_stats(log):
         print(
             "Unable to estimate resolution from cc half fit, reporting overall values"
         )
+    if multiplicity_vals:
+        if len(multiplicity_vals) == 4:
+            print(
+                "Multiplicity suggested total (inner - outer):  "
+                + f"{multiplicity_vals[0]:.2f} ({multiplicity_vals[1]:.2f} - {multiplicity_vals[2]:.2f})"
+            )
+        elif len(multiplicity_vals) == 3:
+            print(
+                "Multiplicity overall total (inner - outer):  "
+                + f"{multiplicity_vals[0]:.2f} ({multiplicity_vals[1]:.2f} - {multiplicity_vals[2]:.2f})"
+            )
+    if completeness_vals:
+        if len(completeness_vals) == 4:
+            print(
+                "Completeness suggested total (inner - outer):  "
+                + f"{completeness_vals[0]:.2f} ({completeness_vals[1]:.2f} - {completeness_vals[2]:.2f})"
+            )
+        elif len(completeness_vals) == 3:
+            print(
+                "Completeness overall total (inner - outer):  "
+                + f"{completeness_vals[0]:.2f} ({completeness_vals[1]:.2f} - {completeness_vals[2]:.2f})"
+            )
+    if isigma_vals:
+        if len(isigma_vals) == 4:
+            print(
+                "I/sigma suggested total (inner - outer):  "
+                + f"{isigma_vals[0]:.2f} ({isigma_vals[1]:.2f} - {isigma_vals[2]:.2f})"
+            )
+        elif len(isigma_vals) == 3:
+            print(
+                "I/sigma overall total (inner - outer):  "
+                + f"{isigma_vals[0]:.2f} ({isigma_vals[1]:.2f} - {isigma_vals[2]:.2f})"
+            )
     if rsplit_vals:
         if len(rsplit_vals) == 4:
             print(
@@ -274,12 +322,12 @@ def summary_of_main_stats(log):
     if cc_vals:
         if len(cc_vals) == 4:
             print(
-                "CChalf suggested (%) total (inner - outer):  "
+                "CChalf suggested total (inner - outer):  "
                 + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
             )
         elif len(cc_vals) == 3:
             print(
-                "CChalf overall (%) total (inner - outer):  "
+                "CChalf overall total (inner - outer):  "
                 + f"{cc_vals[0]:.2f} ({cc_vals[1]:.2f} - {cc_vals[2]:.2f})"
             )
     if mtz_file:
