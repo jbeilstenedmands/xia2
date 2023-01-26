@@ -28,30 +28,25 @@ def generate_scripts(
     name_to_data_dir = {}
 
     for parent in data_dirs:
-        for dir in parent.iterdir():
-            name = dir.name
-            name_to_data_dir[name] = dir.parent
-            # FIXME - update glob of filenames to h5 and test for if all complete
-            n_files = len(list(dir.glob("*.h5")))
-            if n_files >= 1:
-                # print(f"{name} data fully transferred")
-                if Path.is_dir(results_dir / name):
-                    if Path.is_file(results_dir / name / "DataFiles" / "merged.mtz"):
-                        processing_finished.append(str(name))
-                    # FIXME - better test for processing to check if still running rather
-                    # than failed part way through - query slurm_q?
-                    elif Path.is_dir(results_dir / name / "import"):
-                        processing_started.append(str(name))
-                    elif Path.is_dir(results_dir / name / "DataFiles"):
-                        processing_failed.append(str(name))
-                    else:
-                        ready.append(str(name))
+        # for dir in parent.iterdir():
+        #    name = dir.name
+        #    # FIXME - update glob of filenames to h5 and test for if all complete
+        files = list(dir.glob("pdx1*.h5"))
+        for name in files.name.rstrip(".h5"):
+            name_to_data_dir[name] = parent
+            if Path.is_dir(results_dir / name):
+                if Path.is_file(results_dir / name / "DataFiles" / "merged.mtz"):
+                    processing_finished.append(str(name))
+                # FIXME - better test for processing to check if still running rather
+                # than failed part way through - query slurm_q?
+                elif Path.is_dir(results_dir / name / "import"):
+                    processing_started.append(str(name))
+                elif Path.is_dir(results_dir / name / "DataFiles"):
+                    processing_failed.append(str(name))
                 else:
                     ready.append(str(name))
-            elif n_files > 0:
-                print(f"{name} data partially transferred")
             else:
-                print(f"No data transferred yet for {name}")
+                ready.append(str(name))
 
     ready = sorted(ready)
     print(f"Ready for processing:\n{', '.join(ready)}")
@@ -92,9 +87,7 @@ def generate_scripts(
         if not Path.is_dir(results_dir / to_process):
             # print(f"Making directory {results_dir / to_process}")
             Path.mkdir(results_dir / to_process)
-        image = os.fspath(
-            next((name_to_data_dir[to_process] / to_process).glob("*.h5"))
-        )
+        image = os.fspath((name_to_data_dir[to_process] / to_process) + ".h5")
         prot, cond = run_to_protein_condition[to_process]
         if cond not in options[prot]:
             options[prot][cond] = options[prot]["default"]
