@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import stat
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -40,7 +39,7 @@ def generate_scripts(
                     if Path.is_file(results_dir / name / "DataFiles" / "merged.mtz"):
                         processing_finished.append(str(name))
                     # FIXME - better test for processing to check if still running rather
-                    # than failed part way through - query condor_q?
+                    # than failed part way through - query slurm_q?
                     elif Path.is_dir(results_dir / name / "import"):
                         processing_started.append(str(name))
                     elif Path.is_dir(results_dir / name / "DataFiles"):
@@ -101,33 +100,26 @@ def generate_scripts(
             options[prot][cond] = options[prot]["default"]
         script_options = " ".join(f"{k}={v}" for k, v in options[prot][cond].items())
         # Now write the script
-        script = f"""#!/bin/bash
+        slurm_script = f"""#!/bin/bash
+# ALWAYS specify CPU and RAM resources needed, and walltime
+# The default is one task per node,
+#     but note that the --cpus-per-task option will change this default.
+#SBATCH --partition=nice-long
+#SBATCH --ntasks=20
+#SBATCH --time 72:00:00
+#SBATCH --cpus-per-task=1
+# job parameters
+#SBATCH --job-name=dials
+#
 source {dials_source}
 xia2.ssx image={image} {script_options}
 """
-        script_name = "run_xia2.sh"
-        script_file = results_dir / to_process / script_name
-        with open(script_file, "w") as f:
-            print(f"Writing xia2 script to {script_file}")
-            f.write(script)
-        os.chmod(os.fspath(script_file), stat.S_IRWXU)
-        condor_script = """request_cpus = 20
-request_memory = 20000M
-executable = run_xia2.sh
-Requirements = (Machine != "pal-wn1004.sdfarm.kr")
-log = process.log
-error   = logs.err
-output  = logs.out
-queue
-
-"""
-        condor_script_name = "condor_submit.sh"
-        condor_script_file = results_dir / to_process / condor_script_name
-        with open(condor_script_file, "w") as f:
-            print(f"Writing condor script to {condor_script_file}")
-            f.write(condor_script)
-        os.chmod(os.fspath(condor_script_file), stat.S_IRWXU)
-        directory_to_script[results_dir / to_process] = condor_script_name
+        slurm_script_name = "sbatch.sh"
+        slurm_script_file = results_dir / to_process / slurm_script_name
+        with open(slurm_script_file, "w") as f:
+            print(f"Writing slurm script to {slurm_script_file}")
+            f.write(slurm_script)
+        directory_to_script[results_dir / to_process] = slurm_script_name
         n_generated += 1
         if n_generated >= n_jobs_to_generate:
             break
@@ -145,12 +137,11 @@ queue
     if directory_to_script:
         submit_sh = ""
         for dir, script in directory_to_script.items():
-            submit_sh += f"""cd {dir}\ncondor_submit {script}\n"""
+            submit_sh += f"""cd {dir}\nsbatch {script}\n"""
         submit_script_name = "submit.sh"
         submit_script_file = results_dir / submit_script_name
         with open(submit_script_file, "w") as f:
             f.write(submit_sh)
-        os.chmod(os.fspath(submit_script_file), stat.S_IRWXU)
         print(
             f"\nWritten submit script to process {n_generated} 'ready for processing' jobs to {submit_script_file}"
         )
@@ -190,36 +181,26 @@ queue
                         f"Can't find reference pdb model in {protein_options_file} for {name}"
                     )
                     continue
-                submit_sh = f"""#!/bin/bash
+
+                slurm_script = """#!/bin/bash
+# ALWAYS specify CPU and RAM resources needed, and walltime
+# The default is one task per node,
+#     but note that the --cpus-per-task option will change this default.
+#SBATCH --partition=nice-long
+#SBATCH --ntasks=20
+#SBATCH --time 72:00:00
+#SBATCH --cpus-per-task=1
+# job parameters
+#SBATCH --job-name=dials
+#
 source {dials_source}
-xia2.ssx_reduce reference={reference}"""
-                for dataset in merge_group:
-                    submit_sh += f" {results_dir / dataset / 'batch_*' / 'integrated*'}"
-                if "merging" in options[prot]:
-                    for option, val in options[prot]["merging"].items():
-                        submit_sh += f" {option}={val}"
-                submit_sh += "\n"
-                submit_script_name = results_dir / merge_dir_name / "merge_all.sh"
-                with open(submit_script_name, "w") as f:
-                    f.write(submit_sh)
-                os.chmod(os.fspath(submit_script_name), stat.S_IRWXU)
-
-                condor_script = """request_cpus = 20
-request_memory = 20000M
-executable = merge_all.sh
-Requirements = (Machine != "pal-wn1004.sdfarm.kr")
-log = process.log
-error   = logs.err
-output  = logs.out
-queue
-
+xia2.ssx_reduce reference={reference}
 """
-                condor_script_name = "condor_submit.sh"
-                condor_script_file = results_dir / merge_dir_name / condor_script_name
-                with open(condor_script_file, "w") as f:
-                    f.write(condor_script)
-                os.chmod(os.fspath(condor_script_file), stat.S_IRWXU)
-                print(f"\nWritten merging script for {name} to {condor_script_file}")
+                slurm_script_name = "sbatch.sh"
+                slurm_script_file = results_dir / merge_dir_name / slurm_script_name
+                with open(slurm_script_file, "w") as f:
+                    f.write(slurm_script)
+                print(f"\nWritten merging script for {name} to {slurm_script_file}")
                 print(
                     "Please run the script yourself in the directory to merge the data for this protein and condition\n"
                 )
