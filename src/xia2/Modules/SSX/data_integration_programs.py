@@ -502,8 +502,10 @@ def ssx_integrate(
                 ).num_free()
                 n_orientation_params = 3
                 n_mosaicity_params = {
-                    "angular4": 4,
-                    "angular2": 2,
+                    "simple1angular1": 2,
+                    "simple1angular3": 4,
+                    "simple6angular1": 7,
+                    "simple6angular3": 9,
                     "simple1": 1,
                     "simple6": 6,
                 }[integration_params.rlp_mosaicity]
