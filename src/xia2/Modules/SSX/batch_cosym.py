@@ -7,8 +7,14 @@ import random
 import numpy as np
 
 from cctbx import sgtbx
-from dials.algorithms.scaling.scaling_library import determine_best_unit_cell
-from dials.algorithms.symmetry.cosym import CosymAnalysis, extract_reference_intensities
+from dials.algorithms.scaling.scaling_library import (
+    determine_best_unit_cell,
+    scaled_data_as_miller_array,
+)
+from dials.algorithms.symmetry.cosym import CosymAnalysis
+from dials.algorithms.symmetry.reindex_to_reference import (
+    determine_reindex_operator_against_reference,
+)
 from dials.array_family import flex
 from dials.command_line.symmetry import (
     apply_change_of_basis_ops,
@@ -17,6 +23,7 @@ from dials.command_line.symmetry import (
 )
 from dials.util.filter_reflections import filtered_arrays_from_experiments_reflections
 from dials.util.observer import Subject
+from dials.util.reference import intensities_from_reference_file
 from dxtbx.model import ExperimentList
 
 logger = logging.getLogger("dials")
@@ -32,6 +39,7 @@ class BatchCosym(Subject):
         self._reflections = None
         self._output_expt_files = []
         self._output_refl_files = []
+        self.reference_intensities = None
 
         if params.seed is not None:
             flex.set_random_seed(params.seed)
@@ -79,17 +87,11 @@ class BatchCosym(Subject):
         datasets = [
             ma.as_non_anomalous_array().merge_equivalents().array() for ma in datasets
         ]
-
         if self.params.reference:
-            reference_intensities, _ = extract_reference_intensities(
-                params, wavelength=wavelength
+            self.reference_intensities = intensities_from_reference_file(
+                params.reference, wavelength=wavelength
             )
-            datasets.append(reference_intensities)
-            self.cosym_analysis = CosymAnalysis(
-                datasets, self.params, seed_dataset=len(datasets) - 1
-            )
-        else:
-            self.cosym_analysis = CosymAnalysis(datasets, params)
+        self.cosym_analysis = CosymAnalysis(datasets, params)
 
     @Subject.notify_event(event="run_cosym")
     def run(self):
@@ -109,11 +111,8 @@ class BatchCosym(Subject):
             acentric_sg = (
                 subgroup["best_subsym"].space_group().build_derived_acentric_group()
             )
-        if self.params.reference:
-            unique_ids = sorted(set(self.cosym_analysis.dataset_ids))[:-1]
-            reindexing_ops = reindexing_ops[:-1]
-        else:
-            unique_ids = set(self.cosym_analysis.dataset_ids)
+        unique_ids = set(self.cosym_analysis.dataset_ids)
+
         for i, (cb_op, dataset_id) in enumerate(zip(reindexing_ops, unique_ids)):
             cb_op = sgtbx.change_of_basis_op(cb_op)
             logger.debug(
@@ -138,7 +137,37 @@ class BatchCosym(Subject):
                     )
                 )
             refls["miller_index"] = cb_op.apply(refls["miller_index"])
-            expts.as_file(f"processed_{i}.expt")
-            refls.as_file(f"processed_{i}.refl")
-            self._output_expt_files.append(f"processed_{i}.expt")
-            self._output_refl_files.append(f"processed_{i}.refl")
+
+        if self.reference_intensities:
+            # test norm
+            data = []
+            for expts, refls in zip(self.input_experiments, self.input_reflections):
+                intensities = scaled_data_as_miller_array([refls], expts)
+                norm_i = self.cosym_analysis.ml_iso_normalisation(intensities)
+                data.append(norm_i)
+            test_miller_set = data[0]
+            for d in data[1:]:
+                test_miller_set = test_miller_set.concatenate(
+                    d, assert_is_similar_symmetry=False
+                )
+            change_of_basis_op = determine_reindex_operator_against_reference(
+                test_miller_set, self.reference_intensities
+            )
+            for i, (expts, refls) in enumerate(
+                zip(self.input_experiments, self.input_reflections)
+            ):
+                for expt in expts:
+                    expt.crystal = expt.crystal.change_basis(change_of_basis_op)
+                refls["miller_index"] = cb_op.apply(refls["miller_index"])
+                expts.as_file(f"processed_{i}.expt")
+                refls.as_file(f"processed_{i}.refl")
+                self._output_expt_files.append(f"processed_{i}.expt")
+                self._output_refl_files.append(f"processed_{i}.refl")
+        else:
+            for i, (expts, refls) in enumerate(
+                zip(self.input_experiments, self.input_reflections)
+            ):
+                expts.as_file(f"processed_{i}.expt")
+                refls.as_file(f"processed_{i}.refl")
+                self._output_expt_files.append(f"processed_{i}.expt")
+                self._output_refl_files.append(f"processed_{i}.refl")
