@@ -708,10 +708,10 @@ def _extract_cosym_params(reduction_params, index):
         output.reflections=processed_{index}.refl
         output.experiments=processed_{index}.expt
     """
-    if reduction_params.reference:
-        xia2_phil += f"\nreference={reduction_params.reference}"
-        xia2_phil += f"\nreference_model.k_sol={reduction_params.reference_ksol}"
-        xia2_phil += f"\nreference_model.b_sol={reduction_params.reference_bsol}"
+    # if reduction_params.reference:
+    #    xia2_phil += f"\nreference={reduction_params.reference}"
+    #    xia2_phil += f"\nreference_model.k_sol={reduction_params.reference_ksol}"
+    #    xia2_phil += f"\nreference_model.b_sol={reduction_params.reference_bsol}"
     extra_defaults = f"""
         min_i_mean_over_sigma_mean=0.5
         unit_cell_clustering.threshold=None
@@ -825,6 +825,30 @@ def individual_cosym(
         working_directory / cosym_params.output.html,
         working_directory / cosym_params.output.json,
     )
+
+
+def scale_reindex(
+    working_directory: Path,
+    batches_for_reindex: List[ProcessingBatch],
+    reference,
+):
+    from xia2.Modules.SSX.batch_scale import BatchScale
+
+    expts = []
+    refls = []
+
+    logfile = "dials.scale_reindex.log"
+    for batch in batches_for_reindex:
+        for filepair in batch.filepairs:
+            expts.append(load.experiment_list(filepair.expt, check_format=False))
+            refls.append(flex.reflection_table.from_file(filepair.refl))
+
+    with run_in_directory(working_directory), record_step(
+        "dials.scale_reindex"
+    ), log_to_file(logfile) as dials_logger:
+        s = BatchScale(expts, refls, reference)
+        s.run()
+    return batches_for_reindex
 
 
 def cosym_reindex(
