@@ -33,6 +33,7 @@ class BatchCosym(Subject):
     def __init__(self, experiments, reflections, params=None):
         super().__init__(events=["run_cosym", "performed_unit_cell_clustering"])
         self.params = params
+        self.input_sg = experiments[0][0].crystal.get_space_group()
         self.input_experiments = experiments
         self.input_reflections = reflections
         # self._experiments = None
@@ -158,6 +159,7 @@ class BatchCosym(Subject):
             ):
                 for expt in expts:
                     expt.crystal = expt.crystal.change_basis(change_of_basis_op)
+                    expt.crystal.set_space_group(self.input_sg)
                 refls["miller_index"] = cb_op.apply(refls["miller_index"])
                 expts.as_file(f"processed_{i}.expt")
                 refls.as_file(f"processed_{i}.refl")
