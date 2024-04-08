@@ -2,28 +2,18 @@ from __future__ import annotations
 
 import copy
 import logging
-import random
 
 import numpy as np
 
-from cctbx import sgtbx
 from dials.algorithms.scaling.algorithm import ScalingAlgorithm
 from dials.algorithms.scaling.scaling_library import determine_best_unit_cell
-from dials.algorithms.symmetry.cosym import CosymAnalysis, extract_reference_intensities
 from dials.array_family import flex
-from dials.command_line.symmetry import (
-    apply_change_of_basis_ops,
-    change_of_basis_ops_to_minimum_cell,
-    eliminate_sys_absent,
-)
-from dials.util.filter_reflections import filtered_arrays_from_experiments_reflections
-from dials.util.observer import Subject
 from dxtbx.model import ExperimentList
 
 logger = logging.getLogger("dials")
 
 from dials.util.options import ArgumentParser
-from libtbx import Auto, phil
+from libtbx import phil
 
 
 class BatchScale(object):
@@ -45,6 +35,10 @@ class BatchScale(object):
         self.input_reflections = reflections
         self._experiments = ExperimentList([])
         self._reflections = []
+        self._output_expt_files = []
+        self._output_refl_files = []
+        self._new_table = copy.deepcopy(self.input_reflections)
+        self._new_expts = copy.deepcopy(self.input_experiments)
 
         # create a single table and expt per batch
         all_expts = ExperimentList([])
@@ -53,9 +47,7 @@ class BatchScale(object):
         best_unit_cell = determine_best_unit_cell(all_expts)
         # self._experiments = all_expts
 
-        for i, (table, expts) in enumerate(
-            zip(self.input_reflections, self.input_experiments)
-        ):
+        for i, (table, expts) in enumerate(zip(self._new_table, self._new_expts)):
             wavelength = np.mean([expt.beam.get_wavelength() for expt in expts])
             expt = copy.deepcopy(expts[0])
             expt.beam.set_wavelength(wavelength)
@@ -110,4 +102,5 @@ class BatchScale(object):
 
                 refl["miller_index"] = change_of_basis_op.apply(refl["miller_index"])
                 refl.as_file(f"scalereindex_{i}.refl")
-        assert 0
+                self._output_expt_files.append(f"scalereindex_{i}.expt")
+                self._output_refl_files.append(f"scalereindex_{i}.refl")

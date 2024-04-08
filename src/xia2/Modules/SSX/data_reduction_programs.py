@@ -845,10 +845,17 @@ def scale_reindex(
 
     with run_in_directory(working_directory), record_step(
         "dials.scale_reindex"
-    ), log_to_file(logfile) as dials_logger:
+    ), log_to_file(logfile):
         s = BatchScale(expts, refls, reference)
         s.run()
-    return batches_for_reindex
+    outfiles = []
+    for expt, refl in zip(s._output_expt_files, s._output_refl_files):
+        outbatch = ProcessingBatch()
+        outbatch.add_filepair(
+            FilePair(working_directory / expt, working_directory / refl)
+        )
+        outfiles.append(outbatch)
+    return outfiles
 
 
 def cosym_reindex(
