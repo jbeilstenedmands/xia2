@@ -892,9 +892,9 @@ def scale_reindex(
             expts.append(load.experiment_list(filepair.expt, check_format=False))
             refls.append(flex.reflection_table.from_file(filepair.refl))
 
-    with run_in_directory(working_directory), record_step(
-        "dials.scale_reindex"
-    ), log_to_file(logfile):
+    with run_in_directory(working_directory), record_step("scale_reindex"), log_to_file(
+        logfile
+    ):
         s = BatchScale(expts, refls, reference)
         s.run()
     xia2_logger.info("Reindexed against reference file")
