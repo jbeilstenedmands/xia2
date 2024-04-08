@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import copy
+import functools
 import json
 import logging
 import math
@@ -37,6 +38,8 @@ from iotbx.phil import parse
 
 from xia2.Driver.timing import record_step
 from xia2.Handlers.Files import FileHandler
+from xia2.Modules.SSX.batch_cosym import BatchCosym
+from xia2.Modules.SSX.batch_scale import BatchScale
 from xia2.Modules.SSX.data_reduction_definitions import FilePair, ReductionParams
 from xia2.Modules.SSX.reporting import condensed_unit_cell_info
 from xia2.Modules.SSX.util import log_to_file, run_in_directory
@@ -581,9 +584,6 @@ def scale_against_reference(
     )
 
 
-import functools
-
-
 def scale_parallel_batches(
     working_directory, batches: List[ProcessingBatch], reduction_params
 ) -> Tuple[List[ProcessingBatch], List[float]]:
@@ -879,9 +879,11 @@ def scale_reindex_single(
 def scale_reindex(
     working_directory: Path,
     batches_for_reindex: List[ProcessingBatch],
-    reference: Path,
+    reduction_params: ReductionParams,
 ):
-    from xia2.Modules.SSX.batch_scale import BatchScale
+    reference = reduction_params.reference
+    assert reference  # we should not be calling this path without a reference
+    space_group = reduction_params.space_group.group()
 
     expts = []
     refls = []
@@ -891,11 +893,11 @@ def scale_reindex(
         for filepair in batch.filepairs:
             expts.append(load.experiment_list(filepair.expt, check_format=False))
             refls.append(flex.reflection_table.from_file(filepair.refl))
-
+    batches_to_scale = [fp for batch in batches_for_reindex for fp in batch.filepairs]
     with run_in_directory(working_directory), record_step("scale_reindex"), log_to_file(
         logfile
     ):
-        s = BatchScale(expts, refls, reference)
+        s = BatchScale(batches_to_scale, reference, space_group)
         s.run()
     xia2_logger.info("Reindexed against reference file")
     outfiles = []
@@ -917,8 +919,6 @@ def cosym_reindex(
     reference=None,
 ) -> List[ProcessingBatch]:
     from dials.command_line.cosym import phil_scope as cosym_scope
-
-    from xia2.Modules.SSX.batch_cosym import BatchCosym
 
     expts = []
     refls = []

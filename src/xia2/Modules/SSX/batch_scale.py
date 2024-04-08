@@ -3,23 +3,35 @@ from __future__ import annotations
 import copy
 import logging
 import os
+from pathlib import Path
 
 import numpy as np
 
+from cctbx import sgtbx
 from dials.algorithms.scaling.algorithm import ScalingAlgorithm
 from dials.algorithms.scaling.scaling_library import determine_best_unit_cell
+from dials.algorithms.symmetry.reindex_to_reference import (
+    determine_reindex_operator_against_reference,
+)
 from dials.array_family import flex
+from dials.util.reference import intensities_from_reference_file
 from dxtbx.model import ExperimentList
 
 logger = logging.getLogger("dials")
 
+from typing import List
+
 from dials.util.options import ArgumentParser
+from dxtbx.serialize import load
 from libtbx import phil
+
+from xia2.Modules.SSX.data_reduction_definitions import FilePair
 
 
 class BatchScale(object):
-    def __init__(self, experiments, reflections, reference):
-        # super().__init__(events=["run_cosym", "performed_unit_cell_clustering"])
+    def __init__(
+        self, batches: List[FilePair], reference: Path, space_group: sgtbx.space_group
+    ):
         phil_scope = phil.parse(
             """
     include scope dials.command_line.scale.phil_scope
@@ -29,43 +41,30 @@ class BatchScale(object):
         parser = ArgumentParser(phil=phil_scope, check_format=False)
         params, _ = parser.parse_args(args=[], quick_parse=True)
         params.model = "KB"
+        params.scaling_options.full_matrix = False
+        params.weighting.error_model.error_model = None
         self.params = params
-        self.input_sg = copy.deepcopy(experiments[0][0].crystal.get_space_group())
+        self.input_sg = space_group
         self.reference = reference
-        self.input_experiments = experiments
-        self.input_reflections = reflections
+        self.input_batches = batches
         self._experiments = ExperimentList([])
         self._reflections = []
-        self._output_expt_files = []
-        self._output_refl_files = []
-        self._new_table = copy.deepcopy(self.input_reflections)
-        self._new_expts = copy.deepcopy(self.input_experiments)
+        self._output_expt_files: List[str] = []
+        self._output_refl_files: List[str] = []
 
         # create a single table and expt per batch
         all_expts = ExperimentList([])
-        for expts in experiments:
-            all_expts.extend(expts)
-        best_unit_cell = determine_best_unit_cell(all_expts)
-        # self._experiments = all_expts
 
-        for i, (table, expts) in enumerate(zip(self._new_table, self._new_expts)):
-            wavelength = np.mean([expt.beam.get_wavelength() for expt in expts])
+        # we modify the input, but these don't get saved
+        for i, fp in enumerate(self.input_batches):
+            expts = load.experiment_list(fp.expt, check_format=False)
+            table = flex.reflection_table.from_file(fp.refl)
+            all_expts.extend(expts)
             expt = copy.deepcopy(expts[0])
-            expt.beam.set_wavelength(wavelength)
-            expt.crystal.set_unit_cell(best_unit_cell)
             expt.scaling_model = None
             expt.identifier = str(i)
             self._experiments.append(expt)
-            # make a new table, apply existing scales
-
-            table["intensity.sum.value.original"] = table["intensity.sum.value"]
-            table["intensity.sum.variance.original"] = table["intensity.sum.variance"]
             if "inverse_scale_factor" in table:
-                table["inverse_scale_factor_original"] = table["inverse_scale_factor"]
-                table["inverse_scale_factor_variance_original"] = table[
-                    "inverse_scale_factor_variance"
-                ]
-
                 table["intensity.sum.value"] /= table["inverse_scale_factor"]
                 table["intensity.sum.variance"] /= (table["inverse_scale_factor"]) ** 2
                 del table["inverse_scale_factor"]
@@ -76,20 +75,21 @@ class BatchScale(object):
             table.experiment_identifiers()[i] = str(i)
             self._reflections.append(table)
 
+        wavelength = np.mean([expt.beam.get_wavelength() for expt in expts])
+        best_unit_cell = determine_best_unit_cell(all_expts)
+        for expt in self._experiments:
+            expt.crystal.set_unit_cell(best_unit_cell)
+            expt.beam.set_wavelength(wavelength)
+
         self.algorithm = ScalingAlgorithm(params, self._experiments, self._reflections)
 
     def run(self):
         self.algorithm.run()
+        del self._reflections
         if self.reference:
-            from dials.algorithms.symmetry.reindex_to_reference import (
-                determine_reindex_operator_against_reference,
-            )
-            from dials.util.reference import intensities_from_reference_file
-
             wavelength = np.mean(
                 [expt.beam.get_wavelength() for expt in self._experiments]
             )
-
             reference_miller_set = intensities_from_reference_file(
                 os.fspath(self.reference), wavelength=wavelength
             )
@@ -97,9 +97,9 @@ class BatchScale(object):
             change_of_basis_op = determine_reindex_operator_against_reference(
                 test_miller_set, reference_miller_set
             )
-            for i, (expts, refl) in enumerate(
-                zip(self.input_experiments, self.input_reflections)
-            ):
+            for i, fp in enumerate(self.input_batches):
+                expts = load.experiment_list(fp.expt, check_format=False)
+                refl = flex.reflection_table.from_file(fp.refl)
                 for expt in expts:
                     expt.crystal = expt.crystal.change_basis(change_of_basis_op)
                     expt.crystal.set_space_group(self.input_sg)

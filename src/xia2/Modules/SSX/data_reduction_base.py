@@ -295,7 +295,7 @@ class BaseDataReduction(object):
                 batches_to_scale = scale_reindex(
                     self._reindex_wd,
                     batches_to_scale,
-                    reference=self._reduction_params.reference,
+                    self._reduction_params,
                 )
         elif self._reduction_params.reference:
             # scale and reindex a single batch
