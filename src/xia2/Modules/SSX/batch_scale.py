@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 
 import numpy as np
 
@@ -59,15 +60,16 @@ class BatchScale(object):
 
             table["intensity.sum.value.original"] = table["intensity.sum.value"]
             table["intensity.sum.variance.original"] = table["intensity.sum.variance"]
-            table["inverse_scale_factor_original"] = table["inverse_scale_factor"]
-            table["inverse_scale_factor_variance_original"] = table[
-                "inverse_scale_factor_variance"
-            ]
+            if "inverse_scale_factor" in table:
+                table["inverse_scale_factor_original"] = table["inverse_scale_factor"]
+                table["inverse_scale_factor_variance_original"] = table[
+                    "inverse_scale_factor_variance"
+                ]
 
-            table["intensity.sum.value"] /= table["inverse_scale_factor"]
-            table["intensity.sum.variance"] /= (table["inverse_scale_factor"]) ** 2
-            del table["inverse_scale_factor"]
-            del table["inverse_scale_factor_variance"]
+                table["intensity.sum.value"] /= table["inverse_scale_factor"]
+                table["intensity.sum.variance"] /= (table["inverse_scale_factor"]) ** 2
+                del table["inverse_scale_factor"]
+                del table["inverse_scale_factor_variance"]
             for k in list(table.experiment_identifiers().keys()):
                 del table.experiment_identifiers()[k]
             table["id"] = flex.int(table.size(), i)
@@ -78,15 +80,18 @@ class BatchScale(object):
 
     def run(self):
         self.algorithm.run()
-        from dials.algorithms.symmetry.reindex_to_reference import (
-            determine_reindex_operator_against_reference,
-        )
-        from dials.util.reference import intensities_from_reference_file
-
-        wavelength = np.mean([expt.beam.get_wavelength() for expt in self._experiments])
         if self.reference:
+            from dials.algorithms.symmetry.reindex_to_reference import (
+                determine_reindex_operator_against_reference,
+            )
+            from dials.util.reference import intensities_from_reference_file
+
+            wavelength = np.mean(
+                [expt.beam.get_wavelength() for expt in self._experiments]
+            )
+
             reference_miller_set = intensities_from_reference_file(
-                str(self.reference), wavelength=wavelength
+                os.fspath(self.reference), wavelength=wavelength
             )
             test_miller_set = self.algorithm.scaled_miller_array
             change_of_basis_op = determine_reindex_operator_against_reference(
@@ -98,9 +103,9 @@ class BatchScale(object):
                 for expt in expts:
                     expt.crystal = expt.crystal.change_basis(change_of_basis_op)
                     expt.crystal.set_space_group(self.input_sg)
-                expts.as_file(f"scalereindex_{i}.expt")
+                expts.as_file(f"processed_{i}.expt")
 
                 refl["miller_index"] = change_of_basis_op.apply(refl["miller_index"])
-                refl.as_file(f"scalereindex_{i}.refl")
-                self._output_expt_files.append(f"scalereindex_{i}.expt")
-                self._output_refl_files.append(f"scalereindex_{i}.refl")
+                refl.as_file(f"processed_{i}.refl")
+                self._output_expt_files.append(f"processed_{i}.expt")
+                self._output_refl_files.append(f"processed_{i}.refl")

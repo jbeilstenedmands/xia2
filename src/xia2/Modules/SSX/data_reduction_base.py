@@ -33,6 +33,7 @@ from xia2.Modules.SSX.data_reduction_programs import (
     prepare_scaled_array,
     scale_parallel_batches,
     scale_reindex,
+    scale_reindex_single,
     split_integrated_data,
 )
 from xia2.Modules.SSX.yml_handling import (
@@ -289,12 +290,20 @@ class BaseDataReduction(object):
             )
             if not user_dmin:
                 self._reduction_params.d_min = None
-            batches_to_scale = scale_reindex(
-                self._reindex_wd,
-                batches_to_scale,
-                reference=self._reduction_params.reference,
-            )
             xia2_logger.info(f"Consistently reindexed {len( batches_to_scale)} batches")
+            if self._reduction_params.reference:
+                batches_to_scale = scale_reindex(
+                    self._reindex_wd,
+                    batches_to_scale,
+                    reference=self._reduction_params.reference,
+                )
+        elif self._reduction_params.reference:
+            # scale and reindex a single batch
+            batches_to_scale = scale_reindex_single(
+                self._reindex_wd,
+                batches_to_scale[0],
+                self._reduction_params,
+            )
         self._batches_to_scale = batches_to_scale
 
     def _prepare_for_scaling(self, good_crystals_data) -> None:

@@ -827,10 +827,59 @@ def individual_cosym(
     )
 
 
+def scale_reindex_single(
+    working_directory: Path,
+    batch_for_reindex: ProcessingBatch,
+    reduction_params: ReductionParams,
+) -> List[ProcessingBatch]:
+    assert (
+        reduction_params.reference
+    )  # this should only be called if we have a reference
+    scaleresult = scale_on_batches(
+        working_directory,
+        [batch_for_reindex],
+        reduction_params,
+        "batch1",
+    )
+    logfile = "dials.reindex.log"
+    with run_in_directory(working_directory), log_to_file(logfile), record_step(
+        "dials.reindex"
+    ):
+        expts = load.experiment_list(scaleresult.exptfile, check_format=False)
+        refls = flex.reflection_table.from_file(scaleresult.reflfile)
+        space_group = reduction_params.space_group.group()
+        wavelength = np.mean([expt.beam.get_wavelength() for expt in expts])
+        from dials.util.reference import intensities_from_reference_file
+        from dials.util.reindex import change_of_basis_op_against_reference
+
+        reference_miller_set = intensities_from_reference_file(
+            os.fspath(reduction_params.reference), wavelength=wavelength
+        )
+        change_of_basis_op = change_of_basis_op_against_reference(
+            expts, [refls], reference_miller_set
+        )
+        for expt in expts:
+            expt.crystal = expt.crystal.change_basis(change_of_basis_op)
+            expt.crystal.set_space_group(space_group)
+
+        exptfileout = "processed_0.expt"
+        reflfileout = "processed_0.refl"
+        expts.as_file(exptfileout)
+
+        refls["miller_index"] = change_of_basis_op.apply(refls["miller_index"])
+        refls.as_file(reflfileout)
+    xia2_logger.info("Reindexed against reference file")
+    outbatch = ProcessingBatch()
+    outbatch.add_filepair(
+        FilePair(working_directory / exptfileout, working_directory / reflfileout)
+    )
+    return [outbatch]
+
+
 def scale_reindex(
     working_directory: Path,
     batches_for_reindex: List[ProcessingBatch],
-    reference,
+    reference: Path,
 ):
     from xia2.Modules.SSX.batch_scale import BatchScale
 
@@ -848,6 +897,7 @@ def scale_reindex(
     ), log_to_file(logfile):
         s = BatchScale(expts, refls, reference)
         s.run()
+    xia2_logger.info("Reindexed against reference file")
     outfiles = []
     for expt, refl in zip(s._output_expt_files, s._output_refl_files):
         outbatch = ProcessingBatch()
