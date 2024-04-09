@@ -60,10 +60,28 @@ class BatchScale(object):
         # create a single table and expt per batch
         all_expts = ExperimentList([])
 
+        class SANoStats(ScalingAlgorithm):
+            def calculate_merging_stats(self):
+                pass
+
         # we modify the input, but these don't get saved
         for i, fp in enumerate(self.input_batches):
             expts = load.experiment_list(fp.expt, check_format=False)
             table = flex.reflection_table.from_file(fp.refl)
+            sel = (
+                table["intensity.sum.value"] / (table["intensity.sum.variance"] ** 0.5)
+            ) > 2.0
+            n_sel = sel.count(True)
+            if (n_sel / sel.size()) < 0.05 and n_sel > 10:
+                params.reflection_selection.Isigma_range = [0, 0]
+            else:
+                table = table.select(
+                    (
+                        table["intensity.sum.value"]
+                        / (table["intensity.sum.variance"] ** 0.5)
+                    )
+                    > 2.0
+                )
             all_expts.extend(expts)
             expt = copy.deepcopy(expts[0])
             expt.scaling_model = None
@@ -86,7 +104,7 @@ class BatchScale(object):
             expt.crystal.set_unit_cell(best_unit_cell)
             expt.beam.set_wavelength(wavelength)
 
-        self.algorithm = ScalingAlgorithm(params, self._experiments, self._reflections)
+        self.algorithm = SANoStats(params, self._experiments, self._reflections)
 
     def run(self):
         self.algorithm.run()
