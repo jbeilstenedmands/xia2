@@ -885,14 +885,7 @@ def scale_reindex(
     assert reference  # we should not be calling this path without a reference
     space_group = reduction_params.space_group.group()
 
-    expts = []
-    refls = []
-
     logfile = "dials.scale_reindex.log"
-    for batch in batches_for_reindex:
-        for filepair in batch.filepairs:
-            expts.append(load.experiment_list(filepair.expt, check_format=False))
-            refls.append(flex.reflection_table.from_file(filepair.refl))
     batches_to_scale = [fp for batch in batches_for_reindex for fp in batch.filepairs]
     with run_in_directory(working_directory), record_step("scale_reindex"), log_to_file(
         logfile

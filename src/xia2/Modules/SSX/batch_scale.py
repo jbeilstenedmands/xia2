@@ -43,6 +43,11 @@ class BatchScale(object):
         params.model = "KB"
         params.scaling_options.full_matrix = False
         params.weighting.error_model.error_model = None
+        params.scaling_options.outlier_rejection = "simple"
+        params.reflection_selection.min_partiality = 0.25
+        params.reflection_selection.method = "intensity_ranges"
+        params.reflection_selection.Isigma_range = [2, 0]
+        params.cut_data.partiality_cutoff = 0.25
         self.params = params
         self.input_sg = space_group
         self.reference = reference
