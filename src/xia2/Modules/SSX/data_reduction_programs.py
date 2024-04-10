@@ -39,7 +39,7 @@ from iotbx.phil import parse
 from xia2.Driver.timing import record_step
 from xia2.Handlers.Files import FileHandler
 from xia2.Modules.SSX.batch_cosym import BatchCosym
-from xia2.Modules.SSX.batch_scale import BatchScale
+from xia2.Modules.SSX.batch_scale import BatchScaleReindex
 from xia2.Modules.SSX.data_reduction_definitions import FilePair, ReductionParams
 from xia2.Modules.SSX.reporting import condensed_unit_cell_info
 from xia2.Modules.SSX.util import log_to_file, run_in_directory
@@ -890,7 +890,7 @@ def scale_reindex(
     with run_in_directory(working_directory), record_step("scale_reindex"), log_to_file(
         logfile
     ):
-        s = BatchScale(batches_to_scale, reference, space_group)
+        s = BatchScaleReindex(batches_to_scale, reference, space_group)
         s.run()
     xia2_logger.info("Reindexed against reference file")
     outfiles = []
