@@ -486,7 +486,7 @@ def _extract_scaling_params_for_scale_against_reference(reduction_params, name):
         cut_data.partiality_cutoff={reduction_params.partiality_threshold}
         output.experiments={name}.expt
         output.reflections={name}.refl
-        output.html=None
+        output.html=dials.scale.{name}.html
         scaling_options.reference={str(reduction_params.reference)}
         scaling_options.reference_model.k_sol={reduction_params.reference_ksol}
         scaling_options.reference_model.b_sol={reduction_params.reference_bsol}
