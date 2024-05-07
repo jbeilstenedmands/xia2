@@ -717,6 +717,8 @@ def _extract_cosym_params(reduction_params, index):
         unit_cell_clustering.threshold=None
         lattice_symmetry_max_delta={reduction_params.lattice_symmetry_max_delta}
         partiality_threshold={reduction_params.partiality_threshold}
+        cc_weights=sigma
+        weights=standard_error
     """
     if reduction_params.d_min:
         # note - allow user phil to override the overall xia2 d_min - might
@@ -926,6 +928,8 @@ def cosym_reindex(
     params.lattice_symmetry_max_delta = max_delta
     params.partiality_threshold = partiality_threshold
     params.min_i_mean_over_sigma_mean = 0.5
+    params.cc_weights = "sigma"
+    params.weights = "standard_error"
     if reference:
         params.reference = os.fspath(reference)
     if d_min:
