@@ -286,17 +286,17 @@ class BaseDataReduction(object):
                 self._reduction_params.d_min,
                 self._reduction_params.lattice_symmetry_max_delta,
                 self._reduction_params.partiality_threshold,
-                reference=None,  # self._reduction_params.reference,
+                reference=self._reduction_params.reference,
             )
             if not user_dmin:
                 self._reduction_params.d_min = None
             xia2_logger.info(f"Consistently reindexed {len( batches_to_scale)} batches")
-            if self._reduction_params.reference:
+            '''if self._reduction_params.reference:
                 batches_to_scale = scale_reindex(
                     self._reindex_wd,
                     batches_to_scale,
                     self._reduction_params,
-                )
+                )'''
         elif self._reduction_params.reference:
             # scale and reindex a single batch
             batches_to_scale = scale_reindex_single(
