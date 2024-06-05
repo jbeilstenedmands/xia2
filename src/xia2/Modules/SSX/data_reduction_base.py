@@ -32,7 +32,6 @@ from xia2.Modules.SSX.data_reduction_programs import (
     parallel_cosym,
     prepare_scaled_array,
     scale_parallel_batches,
-    scale_reindex,
     scale_reindex_single,
     split_integrated_data,
 )
@@ -291,12 +290,6 @@ class BaseDataReduction(object):
             if not user_dmin:
                 self._reduction_params.d_min = None
             xia2_logger.info(f"Consistently reindexed {len( batches_to_scale)} batches")
-            '''if self._reduction_params.reference:
-                batches_to_scale = scale_reindex(
-                    self._reindex_wd,
-                    batches_to_scale,
-                    self._reduction_params,
-                )'''
         elif self._reduction_params.reference:
             # scale and reindex a single batch
             batches_to_scale = scale_reindex_single(

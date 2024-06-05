@@ -39,7 +39,6 @@ from iotbx.phil import parse
 from xia2.Driver.timing import record_step
 from xia2.Handlers.Files import FileHandler
 from xia2.Modules.SSX.batch_cosym import BatchCosym
-from xia2.Modules.SSX.batch_scale import BatchScaleReindex
 from xia2.Modules.SSX.data_reduction_definitions import FilePair, ReductionParams
 from xia2.Modules.SSX.reporting import condensed_unit_cell_info
 from xia2.Modules.SSX.util import log_to_file, run_in_directory
@@ -876,33 +875,6 @@ def scale_reindex_single(
         FilePair(working_directory / exptfileout, working_directory / reflfileout)
     )
     return [outbatch]
-
-
-def scale_reindex(
-    working_directory: Path,
-    batches_for_reindex: List[ProcessingBatch],
-    reduction_params: ReductionParams,
-):
-    reference = reduction_params.reference
-    assert reference  # we should not be calling this path without a reference
-    space_group = reduction_params.space_group.group()
-
-    logfile = "dials.scale_reindex.log"
-    batches_to_scale = [fp for batch in batches_for_reindex for fp in batch.filepairs]
-    with run_in_directory(working_directory), record_step("scale_reindex"), log_to_file(
-        logfile
-    ):
-        s = BatchScaleReindex(batches_to_scale, reference, space_group)
-        s.run()
-    xia2_logger.info("Reindexed against reference file")
-    outfiles = []
-    for expt, refl in zip(s._output_expt_files, s._output_refl_files):
-        outbatch = ProcessingBatch()
-        outbatch.add_filepair(
-            FilePair(working_directory / expt, working_directory / refl)
-        )
-        outfiles.append(outbatch)
-    return outfiles
 
 
 def cosym_reindex(
