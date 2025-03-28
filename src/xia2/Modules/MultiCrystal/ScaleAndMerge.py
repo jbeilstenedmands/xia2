@@ -1205,6 +1205,8 @@ class Scale:
         elif self._params.scaling.secondary.lmax:
             scaler.set_absorption_correction(True)
             scaler.set_lmax(self._params.scaling.secondary.lmax)
+        elif self._params.scaling.model not in (None, "auto", Auto):
+            scaler.set_absorption_correction(False)
 
         if self._params.scaling.secondary.share.absorption:
             scaler.set_shared_absorption(True)
