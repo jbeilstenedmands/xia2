@@ -34,7 +34,7 @@ from xia2.Modules.Scaler.DialsScaler import (
     scaling_model_auto_rules,
 )
 from xia2.Wrappers.Dials.Cosym import DialsCosym
-from xia2.Wrappers.Dials.EstimateResolution import EstimateResolution
+from xia2.Wrappers.Dials.EstimateResolution import NewEstimateResolutionWrapper
 from xia2.Wrappers.Dials.Refine import Refine
 from xia2.Wrappers.Dials.Reindex import Reindex
 from xia2.Wrappers.Dials.Scale import DialsScale
@@ -1355,14 +1355,8 @@ class Scale:
             self.scale_and_filter_results = scaler.get_scale_and_filter_results()
 
     def estimate_resolution_limit(self) -> tuple[float, str]:
-        # see also xia2/Modules/Scaler/CommonScaler.py: CommonScaler._estimate_resolution_limit()
         params = self._params.resolution
-        m = EstimateResolution()
-        auto_logfiler(m)
-        # use the scaled .refl and .expt file
-        assert self._experiments_filename and self._reflections_filename
-        m.set_reflections(self._reflections_filename)
-        m.set_experiments(self._experiments_filename)
+        m = NewEstimateResolutionWrapper(pathlib.Path.cwd())
         m.set_limit_rmerge(params.rmerge)
         m.set_limit_completeness(params.completeness)
         m.set_limit_cc_half(params.cc_half)
@@ -1371,36 +1365,35 @@ class Scale:
         m.set_limit_isigma(params.isigma)
         m.set_limit_misigma(params.misigma)
         m.set_labels(params.labels)
-        # if batch_range is not None:
-        # start, end = batch_range
-        # m.set_batch_range(start, end)
-        m.run()
+        expts = load.experiment_list(self._experiments_filename, check_format=False)
+        refls = flex.reflection_table.from_file(self._reflections_filename)
+        m.run(expts, refls)
 
-        resolution_limits = []
-        reasoning = []
+        resolution_limits: list[float | None] = []
+        reasoning: list[str] = []
 
         if params.completeness is not None:
-            r_comp = m.get_resolution_completeness()
+            r_comp = m.resolution_completeness
             resolution_limits.append(r_comp)
             reasoning.append("completeness > %s" % params.completeness)
 
         if params.cc_half is not None:
-            r_cc_half = m.get_resolution_cc_half()
+            r_cc_half = m.resolution_cc_half
             resolution_limits.append(r_cc_half)
             reasoning.append("cc_half > %s" % params.cc_half)
 
         if params.rmerge is not None:
-            r_rm = m.get_resolution_rmerge()
+            r_rm = m.resolution_rmerge
             resolution_limits.append(r_rm)
             reasoning.append("rmerge > %s" % params.rmerge)
 
         if params.isigma is not None:
-            r_uis = m.get_resolution_isigma()
+            r_uis = m.resolution_isigma
             resolution_limits.append(r_uis)
             reasoning.append("unmerged <I/sigI> > %s" % params.isigma)
 
         if params.misigma is not None:
-            r_mis = m.get_resolution_misigma()
+            r_mis = m.resolution_misigma
             resolution_limits.append(r_mis)
             reasoning.append("merged <I/sigI> > %s" % params.misigma)
 
