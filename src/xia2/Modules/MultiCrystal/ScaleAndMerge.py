@@ -34,7 +34,7 @@ from xia2.Modules.Scaler.DialsScaler import (
     scaling_model_auto_rules,
 )
 from xia2.Wrappers.Dials.Cosym import DialsCosym
-from xia2.Wrappers.Dials.EstimateResolution import NewEstimateResolutionWrapper
+from xia2.Wrappers.Dials.Functional.EstimateResolution import EstimateResolution
 from xia2.Wrappers.Dials.Refine import Refine
 from xia2.Wrappers.Dials.Reindex import Reindex
 from xia2.Wrappers.Dials.Scale import DialsScale
@@ -1356,7 +1356,7 @@ class Scale:
 
     def estimate_resolution_limit(self) -> tuple[float, str]:
         params = self._params.resolution
-        m = NewEstimateResolutionWrapper(pathlib.Path.cwd())
+        m = EstimateResolution()
         m.set_limit_rmerge(params.rmerge)
         m.set_limit_completeness(params.completeness)
         m.set_limit_cc_half(params.cc_half)
