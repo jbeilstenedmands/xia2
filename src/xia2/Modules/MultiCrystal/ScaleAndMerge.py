@@ -44,6 +44,95 @@ from xia2.Wrappers.Dials.Reindex import Reindex
 from xia2.Wrappers.Dials.Scale import DialsScale
 from xia2.Wrappers.Dials.Symmetry import DialsSymmetry
 from xia2.Wrappers.Dials.TwoThetaRefine import TwoThetaRefine
+#from xia2.Handlers.Environment import log_memory_usage
+
+#def log_memory_usage():
+import psutil
+def log_memory_usage(label="default"):
+    process = psutil.Process(os.getpid())
+    mem = process.memory_info().rss / (1024 * 1024)  # Convert to MB
+    logger.debug(f"[{label}] PID={process.pid} Memory={mem:.2f} MB")
+
+import os
+def get_total_memory_usage():
+    main_proc = psutil.Process(os.getpid())
+    all_procs = [main_proc] + main_proc.children(recursive=True)
+    total_rss = sum(p.memory_info().rss for p in all_procs if p.is_running())
+    mem = total_rss / (1024 * 1024)  # Convert to MB
+    logger.debug(f"Total memory usage across all processes Memory={mem:.2f} MB")
+
+import threading
+import time
+from functools import wraps
+
+def log_memory_usage_in_func(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        stop_event = threading.Event()
+        pid = os.getpid()
+        proc = psutil.Process(pid)
+
+        def monitor():
+            while not stop_event.is_set():
+                mem = proc.memory_info().rss / (1024 * 1024)  # MB
+                logger.debug(f"[{time.strftime('%H:%M:%S')}] Memory: {mem:.2f} MB")
+                time.sleep(1)
+
+        monitor_thread = threading.Thread(target=monitor)
+        monitor_thread.start()
+
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            stop_event.set()
+            monitor_thread.join()
+
+        return result
+    return wrapper
+
+import psutil
+import os
+import threading
+import time
+from functools import wraps
+
+def monitor_memory_usage(interval=1):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            stop_event = threading.Event()
+            parent = psutil.Process(os.getpid())
+
+            def monitor():
+                seen_pids = set()
+                while not stop_event.is_set():
+                    total_rss = 0
+                    procs = [parent] + parent.children(recursive=True)
+                    for p in procs:
+                        if p.is_running():
+                            try:
+                                rss = p.memory_info().rss
+                                total_rss += rss
+                                if p.pid not in seen_pids:
+                                    logger.debug(f"[{time.strftime('%H:%M:%S')}] New subprocess detected: PID={p.pid}")
+                                    seen_pids.add(p.pid)
+                            except psutil.NoSuchProcess:
+                                continue
+                    logger.debug(f"[{time.strftime('%H:%M:%S')}] Total memory usage: {total_rss / (1024 * 1024):.2f} MB")
+                    time.sleep(interval)
+
+            monitor_thread = threading.Thread(target=monitor)
+            monitor_thread.start()
+
+            try:
+                return func(*args, **kwargs)
+            finally:
+                stop_event.set()
+                monitor_thread.join()
+
+        return wrapper
+    return decorator
+
 
 logger = logging.getLogger(__name__)
 
@@ -401,8 +490,10 @@ class MultiCrystalScale:
         self.scale_and_filter_results: scale_and_filter.AnalysisResults | None = None
         self._cosym_analysis: dict[str, Any] = OrderedDict({"cosym_graphs": {}})
 
+    @monitor_memory_usage(interval=1)
     def run(self) -> None:
         logger.notice(banner("Unit cell clustering"))  # type: ignore
+        log_memory_usage()
         self.unit_cell_clustering(plot_name="cluster_unit_cell_p1.png")
 
         if self._params.symmetry.resolve_indexing_ambiguity:
@@ -423,7 +514,7 @@ class MultiCrystalScale:
             self.decide_space_group()
 
         logger.notice(banner("Merging (All data)"))  # type: ignore
-
+        log_memory_usage()
         d_spacings: flex.double = self._scaled.data_manager._reflections["d"]
         self._params.r_free_flags.d_min = flex.min(d_spacings.select(d_spacings > 0))
         self._params.r_free_flags.d_max = flex.max(d_spacings)
@@ -511,12 +602,12 @@ class MultiCrystalScale:
             self._record_individual_report(self._scaled.report(), "All data")
 
         logger.notice(banner("Identifying intensity-based clusters"))  # type: ignore
-
+        log_memory_usage()
         self._mca: MultiCrystalReport = (
             self.multi_crystal_analysis()
         )  # Sets up the analysis and reporting class
         self.cluster_analysis()  # Actually does the cluster analysis
-
+        log_memory_usage()
         # now do cluster identification as in xia2.cluster_analysis.
         # Same code structure as MultiCrystalAnalysis/cluster_analysis.py but changes the call
         # from output_cluster to self._scale_and_report_cluster
@@ -686,6 +777,7 @@ class MultiCrystalScale:
             data_manager.export_reflections("filtered.refl", d_min=scaled.d_min)
 
         self.report()
+        log_memory_usage()
 
     @staticmethod
     def _scale_and_report_cluster(
@@ -1214,6 +1306,7 @@ class MultiCrystalScale:
             scale_and_filter_mode=self._params.filtering.deltacchalf.mode,
         )
 
+    #@log_memory_usage_in_func
     def cluster_analysis(self) -> None:
         self._mca.cluster_analysis()
         self._cos_angle_clusters = self._mca.cos_clusters
