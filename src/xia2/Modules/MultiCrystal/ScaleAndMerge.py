@@ -544,9 +544,12 @@ class MultiCrystalScale:
             )
 
         with record_step("xia2.report(all-data)"):
-            self._record_individual_report(
-                self._scaled.report(), "All data", len(self._data_manager.experiments)
-            )
+            with record_step("xia2.report(generate scaled report)"):
+                report = self._scaled.report()
+            with record_step("xia2.report(record report)"):
+                self._record_individual_report(
+                    report, "All data", len(self._data_manager.experiments)
+                )
 
         logger.notice(banner("Identifying intensity-based clusters"))  # type: ignore
 
@@ -951,23 +954,25 @@ class MultiCrystalScale:
         cluster_name: str,
         number_datasets: int,
     ) -> None:
-        d = self._report_as_dict(report, number_datasets)
-
-        self._individual_report_dicts[cluster_name] = self._individual_report_dict(
-            d, cluster_name
-        )
-
-        self._update_comparison_graphs(report, d, cluster_name)
+        with record_step("xia2.report(report as dict)"):
+            d = self._report_as_dict(report, number_datasets)
+        with record_step("xia2.report(individul report dict)"):
+            self._individual_report_dicts[cluster_name] = self._individual_report_dict(
+                d, cluster_name
+            )
+        with record_step("xia2.report(update comparison graphs)"):
+            self._update_comparison_graphs(report, d, cluster_name)
 
         self._log_report_info(d)
 
     @staticmethod
     def _report_as_dict(report: Report.Report, number_datasets: int) -> dict[str, Any]:
-        (
-            overall_stats_table,
-            merging_stats_table,
-            stats_plots,
-        ) = report.resolution_plots_and_stats()
+        with record_step("xia2.report(resolution_plots_and_stats)"):
+            (
+                overall_stats_table,
+                merging_stats_table,
+                stats_plots,
+            ) = report.resolution_plots_and_stats()
 
         if report.params.anomalous:
             stats_plots.update(report.dano_plots())
@@ -978,11 +983,14 @@ class MultiCrystalScale:
         }
 
         d.update(stats_plots)
-        d.update(report.batch_dependent_plots())
-        d.update(report.intensity_stats_plots())
-        d.update(report.pychef_plots())
-
-        xtriage_success, xtriage_warnings, xtriage_danger = report.xtriage_report()
+        with record_step("xia2.report(batch_dependent_plots)"):
+            d.update(report.batch_dependent_plots())
+        with record_step("xia2.report(intensity_stats_plots)"):
+            d.update(report.intensity_stats_plots())
+        with record_step("xia2.report(pychef_plots)"):
+            d.update(report.pychef_plots())
+        with record_step("xia2.report(xtriage_report)"):
+            xtriage_success, xtriage_warnings, xtriage_danger = report.xtriage_report()
         d["xtriage"] = {
             "success": xtriage_success,
             "warnings": xtriage_warnings,
@@ -1008,8 +1016,8 @@ class MultiCrystalScale:
                     data["y"] = list(flex.double(data["y"]).select(sel))
                     if "text" in data:
                         data["text"] = list(flex.std_string(data["text"]).select(sel))
-
-        d.update(report.multiplicity_plots())
+        with record_step("xia2.report(multiplicity_plots)"):
+            d.update(report.multiplicity_plots())
         return d
 
     @staticmethod

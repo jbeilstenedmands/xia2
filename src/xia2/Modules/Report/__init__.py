@@ -30,6 +30,7 @@ from mmtbx.scaling.xtriage import xtriage_analyses
 import xia2.Handlers.Environment
 import xia2.Handlers.Files
 from xia2.cli.plot_multiplicity import master_phil, plot_multiplicity
+from xia2.Driver.timing import record_step
 from xia2.Handlers.Phil import PhilIndex
 from xia2.Modules.Analysis import batch_phil_scope, phil_scope, separate_unmerged
 
@@ -313,12 +314,16 @@ class Report:
                 dose = dose.select(sel)
 
         if dose is None:
-            dose = dials.pychef.batches_to_dose(batches.data(), self.params.dose)
+            with record_step("xia2.report(batches_to_dose)"):
+                dose = dials.pychef.batches_to_dose(batches.data(), self.params.dose)
         else:
-            dose = dose.data()
-        pychef_stats = dials.pychef.Statistics(intensities, dose, n_bins=n_bins)
-
-        return pychef_stats.to_dict()
+            with record_step("xia2.report(dose data)"):
+                dose = dose.data()
+        with record_step("xia2.report(dials pychef statistics)"):
+            pychef_stats = dials.pychef.Statistics(intensities, dose, n_bins=n_bins)
+        with record_step("xia2.report(to dict)"):
+            d = pychef_stats.to_dict()
+        return d
 
     def dano_plots(self):
         anom_data = {self.intensities.info().wavelength: self.merged_intensities}
@@ -361,9 +366,10 @@ class Report:
         if params is None:
             params = phil_scope.extract()
             params.dose.batch = []
-        intensities, batches, scales = data_manager.reflections_as_miller_arrays(
-            combined=True
-        )
+        with record_step("xia2.report(reflections_as_miller_arrays)"):
+            intensities, batches, scales = data_manager.reflections_as_miller_arrays(
+                combined=True
+            )
 
         params.batch = []
         scope = libtbx.phil.parse(batch_phil_scope)
